@@ -18,8 +18,8 @@ export class AuthService {
       if (hashedPassword === user.password) {
         return {
           email: user.email,
-          name: user.username,
-          id: user._id,
+          username: user.username,
+          _id: user._id,
         };
       }
     }
@@ -35,7 +35,8 @@ export class AuthService {
     };
 
     return {
-      access_token: this.jwtService.sign(payload),
+      token: this.jwtService.sign(payload),
+      user: payload,
     };
   }
 
