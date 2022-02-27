@@ -31,7 +31,7 @@ export class AuthService {
     const payload = {
       email: user.email,
       username: user.username,
-      id: user._id,
+      _id: user._id,
     };
 
     return {
@@ -40,14 +40,11 @@ export class AuthService {
     };
   }
 
-  async validateTokenEmail(email: string) {
-    const user = await this.userService.findUserByEmail(email);
+  async validatePayload(payload: any) {
+    const user = await this.userService.findUserByEmail(payload.email);
+
     if (user) {
-      return {
-        email: user.email,
-        username: user.username,
-        id: user._id,
-      };
+      return user;
     }
 
     return null;

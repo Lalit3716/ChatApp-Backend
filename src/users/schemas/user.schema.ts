@@ -16,6 +16,12 @@ export class User {
 
   @Prop({ require: true })
   salt: string;
+
+  @Prop({ ref: 'User' })
+  friends: string[];
+
+  @Prop({ default: true })
+  online: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
