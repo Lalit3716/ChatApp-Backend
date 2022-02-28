@@ -14,9 +14,11 @@ export class ChatService {
 
   async findAll(roomId: string): Promise<ChatDocument[]> {
     const [user1, user2] = roomId.split('-');
-    return await this.chatModel.find({
-      sender: { $in: [user1, user2] },
-      receiver: { $in: [user1, user2] },
-    });
+    return await this.chatModel
+      .find({
+        sender: { $in: [user1, user2] },
+        receiver: { $in: [user1, user2] },
+      })
+      .sort({ createdAt: -1 });
   }
 }

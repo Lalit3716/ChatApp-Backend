@@ -5,10 +5,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ChatModule } from './chats/chat.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { DB_URI } from './config';
 
 @Module({
   imports: [
-    MongooseModule.forRoot(process.env.DB_URI),
+    MongooseModule.forRoot(DB_URI),
     ChatModule,
     AuthModule,
     UsersModule,

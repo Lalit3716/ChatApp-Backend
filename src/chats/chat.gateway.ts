@@ -14,6 +14,10 @@ import { ChatService } from './chat.service';
 import { Chat } from './schemas/chat.schema';
 import { UsersService } from 'src/users/users.service';
 
+interface MySocket extends Socket {
+  userId: string;
+}
+
 @WebSocketGateway({
   cors: {
     origin: '*',
@@ -31,30 +35,34 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private logger: Logger = new Logger('ChatsGateway');
 
-  handleConnection(client: Socket) {
+  handleConnection(client: MySocket) {
     this.logger.log(`Client connected: ${client.id}`);
   }
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: MySocket) {
     this.logger.log(`Client disconnected: ${client.id}`);
-    client.rooms.forEach(async (room) => {
-      client.leave(room);
-      if (!room.includes('-')) {
-        const user = await this.usersService.changeOnlineStatus(room, false);
-        user.friends.forEach((friend) => {
-          this.server.to(friend).emit('offline', user.id);
-        });
-      }
-    });
+
+    const sockets = await this.server.in(client.userId).allSockets();
+
+    if (sockets.size === 0) {
+      const user = await this.usersService.changeOnlineStatus(
+        client.userId,
+        false,
+      );
+      user.friends.forEach((friendId) => {
+        this.server.to(friendId).emit('user-offline', client.userId);
+      });
+    }
   }
 
   @SubscribeMessage('initUser')
-  async onInitUser(client: Socket, id: string) {
-    this.logger.log(`User ID: ${id}`);
+  async onInitUser(client: MySocket, id: string) {
     client.join(id);
+    client.userId = id;
+    this.logger.log(`User ID: ${client.userId}`);
     const user = await this.usersService.changeOnlineStatus(id, true);
     user.friends.forEach((friendId) => {
-      this.server.to(friendId).emit('online', user.id);
+      this.server.to(friendId).emit('user-online', user.id);
     });
   }
 
@@ -79,30 +87,41 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async onReject(@MessageBody() data: string) {
     this.logger.log(`Reject received: ${data}`);
     const request = await this.requestService.reject(data);
-    this.server.to(request.sender).emit('reject', request);
+    this.server.to(request.sender).emit('reject', data);
+  }
+
+  @SubscribeMessage('cancelRequest')
+  async onCancelRequest(@MessageBody() data: string) {
+    this.logger.log(`Cancel request received: ${data}`);
+    const request = await this.requestService.reject(data);
+    this.server.to(request.receiver).emit('reject', data);
+  }
+
+  @SubscribeMessage('removeFriend')
+  async onRemoveFriend(@MessageBody() data: any) {
+    this.logger.log(`Remove friend received: ${data}`);
+    await this.usersService.removeFriend(data.userId, data.friendId);
+    this.server.to(data.friendId).emit('removeFriend', data.userId);
   }
 
   @SubscribeMessage('joinRoom')
   async onJoinRoom(
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: MySocket,
     @MessageBody() data: any,
   ) {
-    this.logger.log(`Join Room ID: ${data}`);
     client.join(data);
   }
 
   @SubscribeMessage('leaveRoom')
   async onLeaveRoom(
-    @ConnectedSocket() client: Socket,
+    @ConnectedSocket() client: MySocket,
     @MessageBody() data: string,
   ) {
-    this.logger.log(`Leave Room ID: ${data}`);
     client.leave(data);
   }
 
   @SubscribeMessage('message')
   async handleMessage(@MessageBody() data: Chat): Promise<void> {
-    this.logger.log(`Message received: ${data}`);
     await this.chatService.create(data);
     const roomId = [data.sender, data.receiver].sort().join('-');
     this.server.to(roomId).emit('message', data);
