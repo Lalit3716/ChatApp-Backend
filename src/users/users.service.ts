@@ -3,11 +3,24 @@ import { Model } from 'mongoose';
 import { HttpException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schemas/user.schema';
+import { ChatService } from 'src/chats/chat.service';
 import { CreateUserDto } from './schemas/user.dto';
+
+export interface FriendDocument {
+  _id: string;
+  username: string;
+  email: string;
+  lastMessage?: string;
+  lastMessageCreatedAt?: Date;
+  online: boolean;
+}
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private chatService: ChatService,
+  ) {}
 
   async createUser(createUserDto: CreateUserDto) {
     const createdUser = new this.userModel(createUserDto);
@@ -47,8 +60,13 @@ export class UsersService {
     await user.save();
   }
 
-  async getFriends(user: UserDocument): Promise<UserDocument[]> {
-    return await this.userModel.find({ _id: { $in: user.friends } });
+  async getFriends(user: UserDocument): Promise<FriendDocument[]> {
+    const friends = await this.userModel.find({ _id: { $in: user.friends } });
+    const hydratedFriends = await this.chatService.updateWithLastMessages(
+      user._id,
+      friends,
+    );
+    return hydratedFriends;
   }
 
   async changeOnlineStatus(userId: string, status: boolean) {

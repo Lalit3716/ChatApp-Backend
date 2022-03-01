@@ -3,7 +3,7 @@ import { Document } from 'mongoose';
 
 export type ChatDocument = Chat & Document;
 
-@Schema({ timestamps: true })
+@Schema()
 export class Chat {
   @Prop({ required: true })
   message: string;
@@ -13,6 +13,9 @@ export class Chat {
 
   @Prop({ required: true, ref: 'User' })
   receiver: string;
+
+  @Prop({ required: true, default: Date.now })
+  createdAt: Date;
 }
 
 export const ChatSchema = SchemaFactory.createForClass(Chat);
