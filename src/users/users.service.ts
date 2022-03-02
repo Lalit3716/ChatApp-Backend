@@ -13,6 +13,7 @@ export interface FriendDocument {
   lastMessage?: string;
   lastMessageCreatedAt?: Date;
   online: boolean;
+  unseen: number;
 }
 
 @Injectable()

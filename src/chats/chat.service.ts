@@ -11,7 +11,7 @@ export class ChatService {
 
   async create(chat: Chat) {
     const newChat = new this.chatModel(chat);
-    return await newChat.save();
+    return await newChat;
   }
 
   async findAll(roomId: string): Promise<ChatDocument[]> {
@@ -50,9 +50,33 @@ export class ChatService {
           lastMessage: lastMessage ? lastMessage.message : null,
           lastMessageCreatedAt: lastMessage ? lastMessage.createdAt : null,
           online: friend.online,
+          unseen: await this.countUnseenMessages(userId, friend._id),
         };
       }),
     );
     return hydratedFriends;
+  }
+
+  async countUnseenMessages(userId: string, friendId: string) {
+    return await this.chatModel
+      .find({
+        receiver: userId,
+        sender: friendId,
+        seen: false,
+      })
+      .count();
+  }
+
+  async markAsSeen(userId: string, friendId: string) {
+    await this.chatModel.updateMany(
+      {
+        receiver: userId,
+        sender: friendId,
+        seen: false,
+      },
+      {
+        $set: { seen: true },
+      },
+    );
   }
 }

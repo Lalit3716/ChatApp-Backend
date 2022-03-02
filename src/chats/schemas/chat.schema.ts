@@ -14,6 +14,9 @@ export class Chat {
   @Prop({ required: true, ref: 'User' })
   receiver: string;
 
+  @Prop()
+  seen: boolean;
+
   @Prop({ required: true, default: Date.now })
   createdAt: Date;
 }

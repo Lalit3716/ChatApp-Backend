@@ -109,7 +109,12 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: MySocket,
     @MessageBody() data: any,
   ) {
-    client.join(data);
+    const roomId = [data.userId, data.friendId].sort().join('-');
+
+    await this.chatService.markAsSeen(data.userId, data.friendId);
+
+    this.server.to(roomId).emit('seenMessages');
+    client.join(roomId);
   }
 
   @SubscribeMessage('leaveRoom')
@@ -122,9 +127,24 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('message')
   async handleMessage(@MessageBody() data: Chat): Promise<void> {
-    await this.chatService.create(data);
+    const chat = await this.chatService.create(data);
     const roomId = [data.sender, data.receiver].sort().join('-');
-    this.server.to(roomId).emit('message', data);
-    this.server.to(data.receiver).emit('message-notify', data);
+    const socketIds = await this.server.in(roomId).allSockets();
+    const sockets = Array.from(socketIds, (id) => {
+      return this.server.sockets.sockets.get(id);
+    });
+    const isPresent = sockets.find(
+      (socket: MySocket) => socket.userId === data.receiver,
+    );
+
+    if (isPresent) {
+      chat.seen = true;
+      await chat.save();
+    } else {
+      chat.seen = false;
+      await chat.save();
+    }
+    this.server.to(roomId).emit('message', chat);
+    this.server.to(data.receiver).emit('message-notify', chat);
   }
 }
