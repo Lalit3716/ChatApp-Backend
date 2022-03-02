@@ -125,5 +125,6 @@ export class ChatsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this.chatService.create(data);
     const roomId = [data.sender, data.receiver].sort().join('-');
     this.server.to(roomId).emit('message', data);
+    this.server.to(data.receiver).emit('message-notify', data);
   }
 }
