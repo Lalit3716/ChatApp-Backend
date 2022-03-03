@@ -58,6 +58,9 @@ export class UsersService {
   async removeFriend(userId: string, friendId: string) {
     const user = await this.userModel.findById(userId);
     user.friends = user.friends.filter((id) => id !== friendId);
+
+    await this.chatService.removeChats(userId, friendId);
+
     await user.save();
   }
 

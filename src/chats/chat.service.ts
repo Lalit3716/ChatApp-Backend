@@ -24,6 +24,21 @@ export class ChatService {
       .sort({ createdAt: -1 });
   }
 
+  async removeChats(userId: string, friendId: string) {
+    await this.chatModel.deleteMany({
+      $or: [
+        {
+          sender: userId,
+          receiver: friendId,
+        },
+        {
+          sender: friendId,
+          receiver: userId,
+        },
+      ],
+    });
+  }
+
   async getLastMessage(roomId: string): Promise<ChatDocument> {
     const [user1, user2] = roomId.split('-');
     return await this.chatModel
